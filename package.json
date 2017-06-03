@@ -1,0 +1,22 @@
+{
+  "name": "pd-apputil",
+  "version": "1.0.0",
+  "main": "src/library.js",
+  "scripts": {
+    "devServer": "webpack-dev-server",
+    "dev": "webpack",
+    "prod": "webpack -p"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "jquery": "latest"
+  },
+  "devDependencies": {
+    "babel-core": "latest",
+    "babel-loader": "latest",
+    "babel-preset-es2015": "latest",
+    "del": "latest",
+    "webpack": "latest",
+    "webpack-dev-server": "latest"
+  }
+}
