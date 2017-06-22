@@ -1,15 +1,16 @@
 /**
     app name pd-apputil
  */
-import * as $ from "jquery";
+var $ = require('jquery');
+import {URLparameters,waitForScriptsReady} from 'pd-sputil';
 
 export function setFormSource(url) {
-	var formattedUrl = encodeURIComponent(url),
-		urlProps = api.URLparameters(location.search),
+	var here = location,
+		formattedUrl = encodeURIComponent(url),
+		urlProps = URLparameters(here.search),
 		newFormSource;
 
-	urlProps.Source = formattedUrl;
-	newFormSource = location.pathname + "?ID=" +urlProps.ID+ "&Source=" +urlProps.Source;
+	newFormSource = `${here.pathname}?ID=${urlProps.ID}&Source=${formattedUrl}`;
 
 	$('#aspnetForm').attr('action',newFormSource);
 }
@@ -42,63 +43,6 @@ export class errorHandler {
         } 
         return allErrors;
     }
-}
-export function appButtonSetup(props) {
-	// {
-	//	element: $('somethin'), optional
-	// 	discard: [],
-	// 	add: [{class: , displayText}],
-	// 	listner: function() {},
-	// 	loopCB: function() {}
-	// }
-	//to remove buttons pass the class name in an array for discard
-	//add is an array for new buttons, [{class: '', displayText: ''}]
-	var buttonRow = props.element || $('#doeaAppNavigation'),
-		buttonEle,
-		newButtons;
-
-	if (!props.listner) {
-		throw new Error('appButtons must have a event listner');
-	}
-
-	if (props.add) {
-		// add buttons to the end
-		buttonEle = $('<li/>');
-		buttonEle = buttonEle.append(
-			$('<a/>',{
-				href: '#'
-			})
-		);
-		newButtons = props.add.map(function(buttonInfo) {
-			var button = buttonEle.clone();
-			button
-				.find('a')
-				.attr('class', buttonInfo.className)
-				.text(buttonInfo.displayText);
-			return button;
-		});
-		buttonRow
-			.find('.navList')
-			.append(newButtons);	
-	}
-
-	buttonRow
-	.find('a')
-	.each(function(ind, item) {
-		var $button = $(item);
-
-		if (props.discard && props.discard.indexOf($button.attr('class')) > -1) {
-			$button.closest('li').remove();
-			return;
-		}
-		if(props.loopCB) {
-			props.loopCB.call($button, $button);
-		}
-	})
-	.end()
-	.removeClass('buttonsNotShowing')
-	.off()
-	.on('click', 'a', props.listner);
 }
 export function correctAttachmentTableNames(attachTable) {
 
@@ -252,3 +196,146 @@ export function prepBatchInfo(priObj, ary, cb) {
 
 	return self;
 }
+export const peoplePicker = {
+    getPickerField: function(container, parentAttr, returnId) {
+        //return id is a boolean for field id or just field
+        //put class on the container div and pass that in
+        var personField = container
+            .find(parentAttr)
+            .children('div')
+            .children('div');
+
+        if (returnId) {
+            var fieldId = personField.length > 0 ? 
+                personField.attr('id') :
+                null;
+            return fieldId;
+        }
+
+        return personField;		
+    },
+    removeObjRef: function(personFieldId) {
+        if (SPClientPeoplePicker.SPClientPeoplePickerDict[personFieldId]) {
+            delete SPClientPeoplePicker.SPClientPeoplePickerDict[personFieldId];
+        }
+        return SPClientPeoplePicker.SPClientPeoplePickerDict;
+    },
+    removeUsers: function(personFieldId, allUsers) {
+        //personFieldId is the id of the person div (formPersonPicker1_TopSpan)
+        //allUsers is a boolean if true all users all deleted, else just one on far right
+        var currentPickerField = SPClientPeoplePicker.SPClientPeoplePickerDict[ personFieldId ],
+            totalUsers = this.getUsersInfo(personFieldId).length;
+        if (allUsers && totalUsers > 0) {
+            $('#'+ personFieldId.replace('$', '\\$'))
+            .find('span.sp-peoplepicker-userSpan')
+            .each(function() {
+                currentPickerField.DeleteProcessedUser(this);
+            });
+            return currentPickerField;
+        } 
+        if (totalUsers > 0) {
+            currentPickerField.DeleteProcessedUser();
+            return currentPickerField;
+        }		
+    },
+    addUser: function(personFieldId, userProp1, userProp2, resolveUser) {
+        //userProp1 should be AccountName, userProps2 PreferredName
+        //or they can both be email
+        var personObj = SPClientPeoplePicker.BuildUnresolvedEntity(userProp1, userProp2),
+            pickerField = SPClientPeoplePicker.SPClientPeoplePickerDict[ personFieldId ],
+            shouldUserBeResolved = resolveUser || true;	
+
+        pickerField.AddUnresolvedUser(personObj, shouldUserBeResolved);
+        return pickerField;
+    },
+    getUsersInfo: function(personFieldId) {
+        //personFieldId is the id of the person div (formPersonPicker1_TopSpan)
+        return SPClientPeoplePicker.SPClientPeoplePickerDict[ personFieldId ].GetAllUserInfo();
+    },
+    notifiyPeoplePickersReady: function() {
+        function test() {
+            if ($.isEmptyObject(peoplePickers)) {
+                setTimeout(test, 300);
+            } 
+            else {
+                def.resolve(peoplePickers);
+            }
+        }
+        var def = $.Deferred(),
+            peoplePickers;
+
+        return waitForScriptsReady('clientpeoplepicker.js')
+        .then(function() {
+            peoplePickers = SPClientPeoplePicker.SPClientPeoplePickerDict;
+            test();
+            return def.promise();
+        });
+    },
+    initializePeoplePicker: function(options) {
+        /*need 
+            <SharePoint:ScriptLink name="" runat="server" LoadAfterUI="true" Localizable="false" />
+            clienttemplates.js
+            clientforms.js
+            clientpeoplepicker.js
+            autofill.js
+            sp.js
+            sp.runtime.js
+            sp.core.js
+        */
+        // Create a schema to store picker properties, and set the properties.
+        var schema = {};
+        schema.PrincipalAccountType = options.type || 'User,DL,SecGroup,SPGroup';
+        schema.SearchPrincipalSource = options.Search || 15;
+        schema.ResolvePrincipalSource = options.Resolve || 15;
+        schema.AllowMultipleValues = options.MultipleValues || false;
+        schema.MaximumEntitySuggestions = options.EntitySuggestions || 50;
+        schema.Width = options.width || '250px';
+
+        // Render and initialize the picker. 
+        // Pass the ID of the DOM element that contains the picker, an array of initial
+        // PickerEntity objects to set the picker value, and a schema that defines
+        // picker properties.
+        SPClientPeoplePicker_InitStandaloneControlWrapper(options.elementId, null, schema);
+    }
+};
+const taxFields = {};
+export const termPicker = {
+	addTerm: function(fieldId, termLabel, termId) {
+		var field = this.getField(fieldId);
+		field.setRawText(termLabel +'|'+ termId);
+		field.retrieveTerms();
+		return true;
+	},
+	removeTerm: function(fieldId, allTerms, termLabel, termId) {
+		//all terms is a bool 
+		var field = this.getField(fieldId),
+			termCorrected,
+			termsInField,
+			termsForField;
+
+		if (allTerms) {
+			field.setRawText('');
+		} else {
+			termCorrected = termLabel +'|'+ termId;
+			termsInField = field.getRawText().split(';');
+			termsForField = termsInField.filter(function(item) {
+				return item !== termCorrected;
+			});
+			field.setRawText(
+				termsForField.join(';')
+			);
+		}
+
+		field.retrieveTerms();
+		return true;
+	},
+	getField: function(id) {
+		if (!taxFields[id]) {
+			//id will have the word container in it
+			taxFields[id] = new Microsoft.SharePoint.Taxonomy.ControlObject(
+				document.getElementById(id)
+			);
+		}
+		return taxFields[id];
+	}
+};

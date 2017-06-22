@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "main": "src/library.js",
   "scripts": {
-    "devServer": "webpack-dev-server",
-    "dev": "webpack",
-    "prod": "webpack -p"
+    "dev": "webpack --env dev",
+    "testFile": "webpack --env test",
+    "prod": "webpack --env build"
   },
   "license": "ISC",
   "dependencies": {
-    "jquery": "latest"
+    "jquery": "latest",
+    "pd-sputil": "^2.1.2"
   },
   "devDependencies": {
     "babel-core": "latest",

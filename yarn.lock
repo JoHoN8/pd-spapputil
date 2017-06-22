@@ -1617,7 +1617,7 @@ jodid25519@^1.0.0:
   dependencies:
     jsbn "~0.1.0"
 
-jquery@latest:
+jquery@^3.2.1, jquery@latest:
   version "3.2.1"
   resolved "https://registry.yarnpkg.com/jquery/-/jquery-3.2.1.tgz#5c4d9de652af6cd0a770154a631bba12b015c787"
 
@@ -2069,6 +2069,12 @@ pbkdf2@^3.0.3:
     ripemd160 "^2.0.1"
     safe-buffer "^5.0.1"
     sha.js "^2.4.8"
+
+pd-sputil@^2.1.2:
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/pd-sputil/-/pd-sputil-2.1.2.tgz#8d3c5aff36c022814e7e2055a82087e0b6f26e69"
+  dependencies:
+    jquery "^3.2.1"
 
 performance-now@^0.2.0:
   version "0.2.0"
